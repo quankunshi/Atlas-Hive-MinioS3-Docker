@@ -30,7 +30,7 @@ Docker-compose up -d
 ```
 Create a table in the Hive metastore:
 Login to Minio and create buckets `customer-data-text` and add this file [customer](https://github.com/minio/presto-minio/blob/main/minio/data/customer-data-text/customer.csv)
-Run `docker exec -it hadoop-master /bin/bash`.
+Run `docker exec -it hive-server /bin/bash`.
 ```
 # hive
 hive> use default;
