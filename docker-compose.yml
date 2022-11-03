@@ -1,0 +1,129 @@
+version: "3.5"
+
+services:
+  zk:
+    image: zookeeper:latest
+    ports:
+      - "2181:2181"
+    networks:
+      - base_net
+  kafka:
+    image: wurstmeister/kafka:latest
+    environment:
+      KAFKA_CREATE_TOPICS: "ATLAS_HOOK:1:1,ATLAS_ENTITIES:1:1"
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_ADVERTISED_PORT: 9092
+      KAFKA_ZOOKEEPER_CONNECT: zk:2181
+      KAFKA_LOG_DIRS: /data
+    ports:
+      - "9092:9092"
+    depends_on:
+      - "zk"
+    networks:
+      - base_net
+  atlas:
+    image: sburn/apache-atlas:latest
+    ports:
+      - "21000:21000"
+      - "9026:9026"
+      - "9027:9027"
+    command:
+      - /opt/apache-atlas-2.1.0/bin/atlas_start.py
+    depends_on:
+      - "kafka"
+    networks:
+      - base_net
+  namenode:
+    image: johannestang/hadoop-namenode:2.0.0-hadoop2.8.5-java8
+    restart: always
+    volumes:
+      - namenode:/hadoop/dfs/name
+    environment:
+      - CLUSTER_NAME=bigdata1
+    env_file:
+      - ./config/hadoop-hive.env
+    ports:
+      - "50070:50070"
+    networks:
+      - base_net
+
+  datanode:
+    image: johannestang/hadoop-datanode:2.0.0-hadoop2.8.5-java8
+    restart: always
+    volumes:
+      - datanode:/hadoop/dfs/data
+    env_file:
+      - ./config/hadoop-hive.env
+    environment:
+      SERVICE_PRECONDITION: "namenode:50070"
+    ports:
+      - "50075:50075"
+    networks:
+      - base_net
+
+  # Hive
+
+  hive-server:
+    image: johannestang/hive:2.3.6-postgresql-metastore-s3
+    restart: always
+    env_file:
+      - ./config/hadoop-hive.env
+    environment:
+      HIVE_CORE_CONF_javax_jdo_option_ConnectionURL: "jdbc:postgresql://hive-metastore/metastore"
+      SERVICE_PRECONDITION: "hive-metastore:9083"
+      HIVE_SITE_CONF_hive_server2_active_passive_ha_enable: "true"
+      HDFS_CONF_fs_s3a_access_key: minio
+      HDFS_CONF_fs_s3a_secret_key: minio123
+    ports:
+      - "10000:10000"
+      - "10002:10002"
+    networks:
+      - base_net
+
+  hive-metastore:
+    image: johannestang/hive:2.3.6-postgresql-metastore-s3
+    restart: always
+    env_file:
+      - ./config/hadoop-hive.env
+    command: /opt/hive/bin/hive --service metastore
+    environment:
+      SERVICE_PRECONDITION: "namenode:50070 datanode:50075 hive-metastore-postgresql:5432"
+      HDFS_CONF_fs_s3a_access_key: minio
+      HDFS_CONF_fs_s3a_secret_key: minio123
+    ports:
+      - "9083:9083"
+    networks:
+      - base_net
+
+  hive-metastore-postgresql:
+    image: bde2020/hive-metastore-postgresql:2.3.0
+    volumes:
+      - /data/hive-metastore:/var/lib/postgresql/data
+    networks:
+      - base_net
+
+
+  # Minio
+
+  minio:
+    image: minio/minio:RELEASE.2019-10-12T01-39-57Z
+    restart: always
+    ports:
+      - "9000:9000"
+    environment:
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio123
+    volumes:
+      - /data/minio/data:/data
+      - /data/minio/config:/root/.minio
+    command: server /data
+    networks:
+      - base_net
+
+networks:
+  base_net:
+    name: bigdatanet
+
+volumes:
+  namenode:
+  datanode:
