@@ -30,8 +30,8 @@ Docker-compose up -d
 ```
 Create a table in the Hive metastore:
 Login to Minio and create buckets `customer-data-text` and add this file [customer](https://github.com/minio/presto-minio/blob/main/minio/data/customer-data-text/customer.csv)
-```
 Run `docker exec -it hadoop-master /bin/bash`.
+```
 # hive
 hive> use default;
 hive> create external table customer_text(id string, fname string, lname string) ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' STORED AS TEXTFILE location 's3a://customer-data-text/';
@@ -40,4 +40,4 @@ hive> select * from customer_text;
 Login to Atlas and see the results
 ## Contents
 
-This repository I incorporated from [johannestang/bigdata_stack](https://github.com/johannestang/bigdata_stack) and [zanmato1984/atlas-hive-docker] and also [minio/presto-minio](https://github.com/minio/presto-minio)
+This repository I incorporated from [johannestang/bigdata_stack](https://github.com/johannestang/bigdata_stack) and [zanmato1984/atlas-hive-docker](https://github.com/zanmato1984/atlas-hive-docker) and also [minio/presto-minio](https://github.com/minio/presto-minio)
